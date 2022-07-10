@@ -46,8 +46,11 @@ contract Astor is ERC20, Ownable {
     event Launched(uint256 blockNumber, uint256 launchTime);
     event PairUpdated(address pairAddress, bool isPair);
 
-    constructor()  ERC20("Astor", "Astor") {
-        _mint(msg.sender, 1000000000000000000000000000);
+    constructor(address _farmReserve, address treasury)  ERC20("Astor", "Astor") {
+        _mint(msg.sender, 5000000000000000000000000000);
+
+        cryptolutionTreasury = treasury;
+        farmReserve = _farmReserve;
 
         excludedFromTax[msg.sender] = true;
 
@@ -142,7 +145,7 @@ contract Astor is ERC20, Ownable {
         }
         else if((block.timestamp - launchTime) < 1728000){
             uint256 difference = (block.timestamp - launchTime)/86400;
-            return(21- difference);
+            return((20- difference)*1000);
         }
         else{
             return fees;
