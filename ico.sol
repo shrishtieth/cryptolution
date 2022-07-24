@@ -26,10 +26,10 @@ contract AstorTokenICO is Ownable {
     using SafeMath for uint256;
     using SafeERC20 for IERC20;
 
-    address public astor = 0xBfFBAe1B09d5655F78481880Cb2e054533A78d96;
-    uint256 public startTime = 1658661183;
+    address public astor;
+    uint256 public startTime;
     uint256 public amountRaised;
-    address public treasury = 0x9CfCD3D329549D9A327114F5ABf73637d13eFD07 ;
+    address public treasury ;
     address public referalContract = 0x0f04c7Ba8D985496173Dd97aDF165128f38309AB;
     address public vestingContract = 0x4a597EfB591910a03f7753d472c0E982A6FDE80F;
     uint256 public tokensSold;
@@ -76,16 +76,16 @@ contract AstorTokenICO is Ownable {
     event WhitelistUpdated(address user, bool isWhitelisted);
 
   
-    // constructor(
-    //     address astorToken,
-    //     uint256 _start, address _treasury
+    constructor(
+        address astorToken,
+        uint256 _start, address _treasury
 
-    // ) {
+    ) {
       
-    //     astor = (astorToken);
-    //     startTime = _start;
-    //     treasury = _treasury;
-    // }
+        astor = (astorToken);
+        startTime = _start;
+        treasury = _treasury;
+    }
 
     function updateSupply(uint256 _phase1Supply ,uint256 _phase2Supply,
     uint256 _phase3Supply, uint256 _phase4Supply, uint256 _phase5Supply) external onlyOwner{
@@ -253,10 +253,6 @@ contract AstorTokenICO is Ownable {
     function withdrawFunds(address wallet) external onlyOwner{
         uint256 balanceOfContract = address(this).balance;
         payable(wallet).transfer(balanceOfContract);
-    }        
-
-    function updateSupply(uint256 token) external {
-        tokensSold = token;
-    }                                                                                                        
+    }                                                                                                                
 
 }
