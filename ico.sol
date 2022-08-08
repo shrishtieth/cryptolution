@@ -30,13 +30,13 @@ contract AstorTokenICO is Ownable {
     uint256 public startTime;
     uint256 public amountRaised;
     address public treasury ;
-    address public referalContract = 0x0f04c7Ba8D985496173Dd97aDF165128f38309AB;
-    address public vestingContract = 0x4a597EfB591910a03f7753d472c0E982A6FDE80F;
+    address public referalContract = 0xBE10B136177E9f1a5B29fBE3a4Ce467C31f88540;
+    address public vestingContract = 0xC300Ee0Ea14A43977234C75659562A1e52a127f5;
     uint256 public tokensSold;
-    address public busd = 0xeab9B1c602FBcAcB07F7875fE5f49Ec731f7B2D3;
+    address public busd = 0xf906D9c24e98c8CAf3aF6b8a52C03D94DEF3499F;
     address public wbnb = 0x9CfCD3D329549D9A327114F5ABf73637d13eFD07;
-    address public bnbPriceOracle = 0x8e1164E6D4B842728DdE5075bB6847232B4B5AA4;
-    address public busdPriceOracle = 0x573FE2ad7425A91644c7eC65a569B3487019Ae3D;
+    address public bnbPriceOracle = 0x6A761b152d85F4889c778CDe69ACe2209F34cA7E;
+    address public busdPriceOracle = 0xAC3d690Fd663db40d8A23e6eEE316b4e252BF542;
 
     uint256  public phase1Supply = 60000000000000000000000000;
     uint256  public phase2Supply = 120000000000000000000000000;
@@ -206,7 +206,6 @@ contract AstorTokenICO is Ownable {
             refundIfOver(amount);
         }
         Referal(referalContract).updateReward(msg.sender, usdAmount);
-        IERC20(astor).transfer(vestingContract,tokenAmount);
         Vesting(vestingContract).vestTokens(msg.sender, tokenAmount, stage);
         emit TokensBought(msg.sender, usdAmount, tokenAmount);
 
