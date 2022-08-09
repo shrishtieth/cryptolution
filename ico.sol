@@ -50,7 +50,7 @@ contract AstorTokenICO is Ownable {
 
     uint256 public firstBuyAmount = 5000000000;
     uint256 public firstBuyTime = 259200;
-    uint256 public phase1Price = 1000000;
+    uint256 public phase1Price = 1000000; //0.01
     uint256 public phase2Price = 2000000; 
     uint256 public phase3Price = 2500000;
     uint256 public phase4Price = 3000000;
@@ -163,7 +163,7 @@ contract AstorTokenICO is Ownable {
         }
     }
 
-    function buyToken(address token, uint256 amount) external payable {
+    function buyToken(address token, uint256 amount, address user) external payable {
         require(token == wbnb || token == busd,"Invalid currency");
         if(token == wbnb){
             amount = msg.value;
@@ -174,10 +174,10 @@ contract AstorTokenICO is Ownable {
         if(stage == 1){
             price = phase1Price;
             if(startTime + firstBuyTime > block.timestamp){
-                require(isWhitelisted[msg.sender] ||
-                 Referal(referalContract).isReferred(msg.sender),"Not Eligible, try later");
-                require(phase1Bought[msg.sender] == false,"Already Bought Tokens");
-                phase1Bought[msg.sender] = true;
+                require(isWhitelisted[user] ||
+                 Referal(referalContract).isReferred(user),"Not Eligible, try later");
+                require(phase1Bought[user] == false,"Already Bought Tokens");
+                phase1Bought[user] = true;
                 uint256 currencyPrice = getPrice(token);
                 amount = (firstBuyAmount*10**18/currencyPrice);   
 
@@ -205,10 +205,28 @@ contract AstorTokenICO is Ownable {
             payable(treasury).transfer(amount); 
             refundIfOver(amount);
         }
-        Referal(referalContract).updateReward(msg.sender, usdAmount);
-        Vesting(vestingContract).vestTokens(msg.sender, tokenAmount, stage);
-        emit TokensBought(msg.sender, usdAmount, tokenAmount);
+        Referal(referalContract).updateReward(user, usdAmount);
+        Vesting(vestingContract).vestTokens(user, tokenAmount, stage);
+        emit TokensBought(user, usdAmount, tokenAmount);
 
+    }
+
+    function getStagePrice(uint256 stage) public view returns(uint256 price){
+        if(stage == 1){
+            price = phase1Price;
+        }
+        else if(stage == 2){
+            price = phase2Price;
+        }
+        else if(stage == 3){
+            price = phase3Price;
+        }
+        else if(stage == 4){
+            price = phase4Price;
+        }
+        else if(stage == 5){
+            price = phase5Price;
+        }
     }
 
     function getPrice(address token) public view returns(uint256 price){
@@ -218,6 +236,14 @@ contract AstorTokenICO is Ownable {
         else if(token == wbnb){
             price = uint256(IBNBPrice(bnbPriceOracle).getLatestPrice());
         }
+    }
+
+    function getPriceForTokens(address currency, uint256 tokenAmount)
+     public view returns(uint256 amount){
+        uint256 stage = getStage();
+        uint256 tokenPrice = getStagePrice(stage);
+        uint256 currencyPrice = getPrice(currency);
+        return(tokenAmount*((tokenPrice*10**18)/currencyPrice));
     }
 
     function getTokensForPrice(address token, uint256 amount, uint256 price)
