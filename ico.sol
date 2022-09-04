@@ -14,8 +14,9 @@ interface IBUSDPrice{
 }
 
 interface Referal{
-    function isReferred(address user) external view returns(bool);
-    function updateReward(address user, uint256 amount) external ;
+    function getReferrer(address user) external  view returns(address);
+
+    function getAllRefrees(address user) external  view returns(address[] memory);
 }
 
 interface Vesting{
@@ -37,6 +38,7 @@ contract AstorTokenICO is Ownable {
     address public wbnb = 0x9CfCD3D329549D9A327114F5ABf73637d13eFD07;
     address public bnbPriceOracle = 0x6A761b152d85F4889c778CDe69ACe2209F34cA7E;
     address public busdPriceOracle = 0xAC3d690Fd663db40d8A23e6eEE316b4e252BF542;
+    address[] public investors;
 
     uint256  public phase1Supply = 60000000000000000000000000;
     uint256  public phase2Supply = 120000000000000000000000000;
@@ -56,13 +58,12 @@ contract AstorTokenICO is Ownable {
     uint256 public phase3Price = 2500000;
     uint256 public phase4Price = 3000000;
     uint256 public phase5Price = 3500000;
-
     uint256 public poolAmount;
+    uint256 public poolAmountDistributed;
 
-    mapping(address => address) public getReferrer;
-    mapping(address => address[]) public getRefrees;
     mapping(uint256 => uint256) public levelToCommision;
     mapping(uint256 => uint256) public poolToSale;
+    mapping(address => bool) public added;
     uint256 public boardCommision = 800;
     address public boardWallet;
     uint256 public referalPool = 400; 
@@ -193,6 +194,9 @@ contract AstorTokenICO is Ownable {
     }
 
     function buyToken(address token, uint256 amount, address user) external payable {
+        if(!added[user]){
+            investors.push(user);
+        }
         require(token == wbnb || token == busd,"Invalid currency");
         if(token == wbnb){
             amount = msg.value;
@@ -204,7 +208,7 @@ contract AstorTokenICO is Ownable {
             price = phase1Price;
             if(startTime + firstBuyTime > block.timestamp){
                 require(isWhitelisted[user] ||
-                getReferrer[user] != address(0),"Not Eligible, try later");
+                Referal(referalContract).getReferrer(user) != address(0),"Not Eligible, try later");
                 require(phase1Bought[user] == false,"Already Bought Tokens");
                 phase1Bought[user] = true;
                 uint256 currencyPrice = getPrice(token);
@@ -246,7 +250,7 @@ contract AstorTokenICO is Ownable {
             refundIfOver(amount);
         }
         usdInvestedByUser[user] += usdAmount;
-        Referal(referalContract).updateReward(user, usdAmount);
+        // Referal(referalContract).updateReward(user, usdAmount);
         Vesting(vestingContract).vestTokens(user, tokenAmount, stage);
         emit TokensBought(user, usdAmount, tokenAmount);
 
@@ -308,20 +312,20 @@ contract AstorTokenICO is Ownable {
         address _user = user;
 
         for (uint i = 1; i <= totalItemCount; i++) {
-            if (getReferrer[_user]!= address(0)) {
-                _user = getReferrer[_user];
+            if (Referal(referalContract).getReferrer(_user)!= address(0)) {
+                _user = Referal(referalContract).getReferrer(user);
                 itemCount = itemCount+(1) ;
             }
         }
          _user = user;
         Refer[] memory items = new Refer[](itemCount);
         for (uint i = 1; i <= totalItemCount; i++) {
-            if (getReferrer[_user]!= address(0)) {
+            if (Referal(referalContract).getReferrer(user)!= address(0)) {
                 Refer memory currentItem = Refer({
                     user : _user,
                     amount : (amount*(levelToCommision[i]))/10000
                 });
-                _user = getReferrer[_user];
+                _user = Referal(referalContract).getReferrer(user);
                 items[currentIndex] = currentItem;
                 currentIndex = currentIndex+(1);
             }
@@ -330,24 +334,15 @@ contract AstorTokenICO is Ownable {
     }
     
 
-    function refer(address referrer) external{
-    require(getReferrer[msg.sender] == address(0),"Already registered");
-    getReferrer[msg.sender] = referrer;
-    getRefrees[referrer].push(msg.sender);
-    }
-
-    function isReferred(address user) external view returns(bool){
-    return(getReferrer[user]==address(0));
-    }
 
     function distributeWbnb(address user, uint256 amount) private returns(uint256 total){
      uint totalItemCount = 7;
      address _user = user;
         for (uint i = 1; i <= totalItemCount; i++) {
-            if (getReferrer[_user]!= address(0)) {
-                IERC20(busd).transferFrom(msg.sender, getReferrer[_user], amount*(levelToCommision[i])/10000);
+            if (Referal(referalContract).getReferrer(user)!= address(0)) {
+                IERC20(busd).transferFrom(msg.sender, Referal(referalContract).getReferrer(user), amount*(levelToCommision[i])/10000);
                  total += (levelToCommision[i])/10000;
-                _user = getReferrer[_user];
+                _user = Referal(referalContract).getReferrer(user);
             }
         }
     }
@@ -356,10 +351,10 @@ contract AstorTokenICO is Ownable {
     uint totalItemCount = 7;
      address _user = user;
         for (uint i = 1; i <= totalItemCount; i++) {
-            if (getReferrer[_user]!= address(0)) {
-                payable(getReferrer[_user]).transfer(amount*(levelToCommision[i])/10000);
+            if (Referal(referalContract).getReferrer(user)!= address(0)) {
+                payable(Referal(referalContract).getReferrer(user)).transfer(amount*(levelToCommision[i])/10000);
                 total += (levelToCommision[i])/10000;
-                _user = getReferrer[_user];
+                _user = Referal(referalContract).getReferrer(user);
             }
         }
     }
@@ -386,19 +381,18 @@ contract AstorTokenICO is Ownable {
         payable(wallet).transfer(balanceOfContract);
     } 
 
-    function getEligibleAmount(address user) public view returns(uint256 amount){
-        uint256 total = getRefrees[user].length;
-        address highest;
-        uint256 otherAmount;
-        uint256 highestAmount;
+    function getEligibleAmount(address user) public view returns(uint256 amount, address highest, uint256 otherAmount,
+        uint256 highestAmount){
+        address[] memory getRefrees = Referal(referalContract).getAllRefrees(user);
+        uint256 total = getRefrees.length;
         for(uint256 i = 0; i< total ; i++){
-           if(usdInvestedByUser[getRefrees[user][i]] > usdInvestedByUser[highest]){
-              highest = getRefrees[user][i];
+           if(usdInvestedByUser[getRefrees[i]] > usdInvestedByUser[highest]){
+              highest = getRefrees[i];
               otherAmount += highestAmount;
-              highestAmount = usdInvestedByUser[getRefrees[user][i]];
+              highestAmount = usdInvestedByUser[getRefrees[i]];
            }
            else{
-               otherAmount += usdInvestedByUser[getRefrees[user][i]];
+               otherAmount += usdInvestedByUser[getRefrees[i]];
            }
 
         }
@@ -412,8 +406,13 @@ contract AstorTokenICO is Ownable {
 
     }
 
-    
+    function distributePoolAmount() external onlyOwner{
+        uint256 totalUsers = investors.length;
+        for(uint256 i = 0; i< totalUsers; i++){
+            uint256 userAmount = ((usdInvestedByUser[investors[i]])*poolAmount)/amountRaised;
+            IERC20(astor).transfer(investors[i], userAmount);
+        }
+    }
+                                                                                                             
 
-                                                                                                               
-
-}
+ }
