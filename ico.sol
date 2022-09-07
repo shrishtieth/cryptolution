@@ -415,6 +415,7 @@ contract AstorTokenICO is Ownable {
     mapping(uint256 => uint256) public levelToCommision;
     mapping(uint256 => uint256) public poolToSale;
     mapping(address => bool) public added;
+    mapping(address => uint256) public poolReward;
     uint256 public boardCommision = 800;
     address public boardWallet = 0x7d22e6144931687AF80b38d2C9b7F9F3f7a43291;
     uint256 public referalPool = 400; 
@@ -671,19 +672,19 @@ contract AstorTokenICO is Ownable {
 
         for (uint i = 1; i <= totalItemCount; i++) {
             if (Referal(referalContract).getReferrer(_user)!= address(0)) {
-                _user = Referal(referalContract).getReferrer(user);
+                _user = Referal(referalContract).getReferrer(_user);
                 itemCount = itemCount+(1) ;
             }
         }
          _user = user;
         Refer[] memory items = new Refer[](itemCount);
         for (uint i = 1; i <= totalItemCount; i++) {
-            if (Referal(referalContract).getReferrer(user)!= address(0)) {
+            if (Referal(referalContract).getReferrer(_user)!= address(0)) {
                 Refer memory currentItem = Refer({
                     user : _user,
                     amount : (amount*(levelToCommision[i]))/10000
                 });
-                _user = Referal(referalContract).getReferrer(user);
+                _user = Referal(referalContract).getReferrer(_user);
                 items[currentIndex] = currentItem;
                 currentIndex = currentIndex+(1);
             }
@@ -766,9 +767,18 @@ contract AstorTokenICO is Ownable {
 
     function distributePoolAmount() external onlyOwner{
         uint256 totalUsers = investors.length;
-        for(uint256 i = 0; i< totalUsers; i++){
-            uint256 userAmount = ((usdInvestedByUser[investors[i]])*poolAmount)/amountRaised;
-            IERC20(astor).transfer(investors[i], userAmount);
+        uint256 poolShare = (poolAmount - poolAmountDistributed)/4;
+        for(uint256 i=0; i<4; i++){
+            for(uint256 j = 0; j< totalUsers; j++){
+            (uint256 amount,,,) = getEligibleAmount(investors[i]);
+            if(amount >= poolToSale[i+1]){
+            uint256 userAmount = ((usdInvestedByUser[investors[j]])*poolShare)/amountRaised;
+            IERC20(busd).transfer(investors[j], userAmount);
+            poolAmountDistributed += userAmount;
+            poolReward[investors[j]] += userAmount;
+            }
+            
+        }
         }
     }
 
