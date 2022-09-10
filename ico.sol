@@ -384,7 +384,7 @@ contract AstorTokenICO is Ownable {
     address public referalContract = 0x25140D81fc1EDeCB91F246813454627088fa229B;
     address public vestingContract = 0xC300Ee0Ea14A43977234C75659562A1e52a127f5;
     uint256 public tokensSold;
-    address public busd = 0x50974fc94D815369dd95f9D28a6879C644f25DBB;
+    address public busd = 0x5995b7192867f6F53C17392E67b168459017C820;
     address public wbnb = 0xae13d989daC2f0dEbFf460aC112a837C89BAa7cd;
     address public bnbPriceOracle = 0xAC3d690Fd663db40d8A23e6eEE316b4e252BF542;
     address public busdPriceOracle = 0x6A761b152d85F4889c778CDe69ACe2209F34cA7E ;
@@ -402,6 +402,7 @@ contract AstorTokenICO is Ownable {
     mapping(address => bool) isWhitelisted;
     mapping(address => bool) public phase1Bought;
 
+
     uint256 public firstBuyAmount = 5000000000;
     uint256 public firstBuyTime = 259200;
     uint256 public phase1Price = 1000000; //0.01
@@ -416,6 +417,7 @@ contract AstorTokenICO is Ownable {
     mapping(uint256 => uint256) public poolToSale;
     mapping(address => bool) public added;
     mapping(address => uint256) public poolReward;
+    mapping(address => uint256) public referalIncome;
     uint256 public boardCommision = 800;
     address public boardWallet = 0x7d22e6144931687AF80b38d2C9b7F9F3f7a43291;
     uint256 public referalPool = 400; 
@@ -461,10 +463,10 @@ contract AstorTokenICO is Ownable {
         levelToCommision[5]= 300;
         levelToCommision[6] = 200;
         levelToCommision[7] = 100;
-        poolToSale[1] = 1000000000000000000000000;
-        poolToSale[2] = 2000000000000000000000000;
-        poolToSale[3] = 5000000000000000000000000;
-        poolToSale[4] = 10000000000000000000000000;
+        poolToSale[1] = 100000000000000;
+        poolToSale[2] = 200000000000000;
+        poolToSale[3] = 500000000000000;
+        poolToSale[4] = 1000000000000000;
         IUniswapV2Router02 _uniswapV2Router = IUniswapV2Router02(
             0xD99D1c33F9fC3444f8101754aBC46c52416550D1
         );
@@ -654,7 +656,7 @@ contract AstorTokenICO is Ownable {
      public view returns(uint256 tokenAmount, uint256 usdPrice){
         uint256 currencyPrice = getPrice(token);
         tokenAmount = (currencyPrice*amount)/price;
-        usdPrice = currencyPrice*amount;
+        usdPrice = (currencyPrice*amount)/10**18;
     } 
 
     function refundIfOver(uint256 price) private {
@@ -700,6 +702,7 @@ contract AstorTokenICO is Ownable {
         for (uint i = 1; i <= totalItemCount; i++) {
             if (Referal(referalContract).getReferrer(_user)!= address(0)) {
                 IERC20(busd).transferFrom(msg.sender, Referal(referalContract).getReferrer(_user), amount*(levelToCommision[i])/10000);
+                 referalIncome[Referal(referalContract).getReferrer(_user)] += (getPrice(busd)*amount*(levelToCommision[i])/10000)/10**8;
                  total += amount*(levelToCommision[i])/10000;
                 _user = Referal(referalContract).getReferrer(_user);
             }
@@ -712,6 +715,7 @@ contract AstorTokenICO is Ownable {
         for (uint i = 1; i <= totalItemCount; i++) {
             if (Referal(referalContract).getReferrer(_user)!= address(0)) {
                 payable(Referal(referalContract).getReferrer(_user)).transfer(amount*(levelToCommision[i])/10000);
+                referalIncome[Referal(referalContract).getReferrer(_user)] += (getPrice(wbnb)*amount*(levelToCommision[i])/10000)/10**8;
                 total += amount*(levelToCommision[i])/10000;
                 _user = Referal(referalContract).getReferrer(_user);
             }
@@ -764,6 +768,26 @@ contract AstorTokenICO is Ownable {
     }
 
     }
+
+    function getPoolAndAmount(address user) external view returns(uint256 pool, uint256 amountRemaining){
+        (uint256 amount,,,) = getEligibleAmount(user);
+        if(amount < poolToSale[1]){
+            pool = 1;
+            amountRemaining = poolToSale[1] - amount;
+        }
+        if(amount >= poolToSale[1] && amount < poolToSale[2]){
+            pool = 2;
+            amountRemaining = poolToSale[2] - amount;
+        }
+        if(amount >= poolToSale[2] && amount < poolToSale[3]){
+            pool = 3;
+            amountRemaining = poolToSale[3] - amount;
+        }
+        if(amount >= poolToSale[3] && amount <= poolToSale[4]){
+            pool = 4;
+            amountRemaining = poolToSale[4] - amount;
+        }
+    } 
 
     function distributePoolAmount() external onlyOwner{
         uint256 totalUsers = investors.length;
