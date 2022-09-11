@@ -20,7 +20,7 @@ interface Referal{
 }
 
 interface Vesting{
-    function vestTokens(address user, uint256 amount, uint256 phase) external;
+    function vestTokenIco(address user, uint256 amount, uint256 phase) external;
 }
 
 interface IUniswapV2Factory {
@@ -382,7 +382,8 @@ contract AstorTokenICO is Ownable {
     uint256 public amountRaised;
     address public treasury ;
     address public referalContract = 0x25140D81fc1EDeCB91F246813454627088fa229B;
-    address public vestingContract = 0xC300Ee0Ea14A43977234C75659562A1e52a127f5;
+    // address public vestingContract = 0xC300Ee0Ea14A43977234C75659562A1e52a127f5;
+    address public vestingContract = 0xC426d13Bd2E6eBFB417a63616EB0AAD5fCaE2071;
     uint256 public tokensSold;
     address public busd = 0x5995b7192867f6F53C17392E67b168459017C820;
     address public wbnb = 0xae13d989daC2f0dEbFf460aC112a837C89BAa7cd;
@@ -543,7 +544,7 @@ contract AstorTokenICO is Ownable {
         else if(tokensSold >= phase3Supply && tokensSold < phase4Supply){
             return(4);
         }
-        else if(tokensSold >= phase4Supply && tokensSold < phase5Supply){
+        else if(tokensSold >= phase4Supply && tokensSold <= phase5Supply){
             return(5);
         }
         else{
@@ -589,6 +590,7 @@ contract AstorTokenICO is Ownable {
         }
         (uint256 tokenAmount, uint256 usdAmount) = getTokensForPrice( token,  amount,  price);
         tokensSold += tokenAmount;
+        require(tokensSold <= phase5Supply,"SOLD OUT!!");
         amountRaised += usdAmount;
         if(token == busd){
             uint256 pool = (amount*referalPool)/10000;
@@ -611,7 +613,7 @@ contract AstorTokenICO is Ownable {
         }
         usdInvestedByUser[user] += usdAmount;
         tokenBoughtUser[user] += tokenAmount;
-        Vesting(vestingContract).vestTokens(user, tokenAmount, stage);
+        Vesting(vestingContract).vestTokenIco(user, tokenAmount, stage);
         emit TokensBought(user, usdAmount, tokenAmount);
 
     }
