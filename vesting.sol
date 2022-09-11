@@ -255,8 +255,9 @@ library Counters {
 
     function vestTokenIco(address user, uint256 amount, uint256 phase) public returns(uint256 id){
         require(allowedToCall[msg.sender],"Access Denied");
-        if(added[msg.sender] == false){
-           allUsers.push(msg.sender);
+        if(added[user] == false){
+           allUsers.push(user);
+           added[user] = true;
         }
         vestingID.increment();
         id = vestingID.current();
@@ -367,6 +368,7 @@ library Counters {
            tgeAmountReleased[allUsers[i]] += userTgeAmount[allUsers[i]];
            totalTgeAmountReleased += userTgeAmount[allUsers[i]];
            emit TgeAmountReleased(allUsers[i],userTgeAmount[allUsers[i]]);
+           userTgeAmount[allUsers[i]] = 0;
           }
        }
    }
