@@ -389,6 +389,9 @@ contract AstorTokenICO is Ownable {
     address public wbnb = 0xae13d989daC2f0dEbFf460aC112a837C89BAa7cd;
     address public bnbPriceOracle = 0xAC3d690Fd663db40d8A23e6eEE316b4e252BF542;
     address public busdPriceOracle = 0x6A761b152d85F4889c778CDe69ACe2209F34cA7E ;
+    address public topAccount;
+    address public marketing;
+    address public liquidity;
     address[] public investors;
     IUniswapV2Router02 public uniswapV2Router; // uniswap dex router
 
@@ -422,6 +425,10 @@ contract AstorTokenICO is Ownable {
     uint256 public boardCommision = 800;
     address public boardWallet = 0x7d22e6144931687AF80b38d2C9b7F9F3f7a43291;
     uint256 public referalPool = 400; 
+    uint256 public treasuryPercentage = 400;
+    uint256 public liquidityPercentage = 4000;
+    uint256 public marketingPercentage = 1200;
+    uint256 public referalTotal = 3200;
 
     struct Refer{
     address user;                                                                                                           
@@ -450,13 +457,16 @@ contract AstorTokenICO is Ownable {
   
     constructor(
         address astorToken,
-        uint256 _start, address _treasury
+        uint256 _start
 
     ) {
       
         astor = (astorToken);
         startTime = _start;
-        treasury = _treasury;
+        treasury = 0x9CfCD3D329549D9A327114F5ABf73637d13eFD07;
+        liquidity = 0x9CfCD3D329549D9A327114F5ABf73637d13eFD07;
+        marketing = 0x9CfCD3D329549D9A327114F5ABf73637d13eFD07;
+        topAccount = 0x9CfCD3D329549D9A327114F5ABf73637d13eFD07;
         levelToCommision[1] = 1000;
         levelToCommision[2] = 700;
         levelToCommision[3] = 500;
@@ -593,13 +603,7 @@ contract AstorTokenICO is Ownable {
         require(tokensSold <= phase5Supply,"SOLD OUT!!");
         amountRaised += usdAmount;
         if(token == busd){
-            uint256 pool = (amount*referalPool)/10000;
-            poolAmount += pool;
-            IERC20(busd).transferFrom(msg.sender, address(this), pool); 
-            uint256 board = (amount* boardCommision)/10000;
-            IERC20(busd).transferFrom(msg.sender, boardWallet, board); 
-            uint256 referalAmount = distributeWbnb(user, amount);
-            IERC20(busd).transferFrom(msg.sender, treasury, (amount -(referalAmount + board + pool)));    
+           distributeRevenueBusd(amount, user);
         }
         else if(token == wbnb){
             uint256 pool = (amount*referalPool)/10000;
@@ -617,6 +621,45 @@ contract AstorTokenICO is Ownable {
         emit TokensBought(user, usdAmount, tokenAmount);
 
     }
+
+    function distributeRevenueBusd(uint256 amount, address user) private{
+            uint256 pool = (amount*referalPool)/10000;
+            poolAmount += pool;
+            IERC20(busd).transferFrom(msg.sender, address(this), pool); 
+            uint256 board = (amount* boardCommision)/10000;
+            IERC20(busd).transferFrom(msg.sender, boardWallet, board);
+            uint256 treasuryAmount = (amount* treasuryPercentage)/10000;
+            IERC20(busd).transferFrom(msg.sender, treasury, treasuryAmount);
+            uint256 liquidityAmount = (amount* liquidityPercentage)/10000;
+            IERC20(busd).transferFrom(msg.sender, liquidity, liquidityAmount); 
+            uint256 marketingAmount = (amount* marketingPercentage)/10000;
+            IERC20(busd).transferFrom(msg.sender, marketing, marketingAmount); 
+            uint256 referalTotalAmount = (amount*referalTotal)/10000;
+            uint256 referalAmount = distributeWbnb(user, amount);
+            if(referalTotalAmount > referalAmount){
+            IERC20(busd).transferFrom(msg.sender, topAccount, referalTotalAmount-referalAmount);  
+            }  
+    }
+
+    function distributeRevenueBnb(uint256 amount, address user) private{
+            uint256 pool = (amount*referalPool)/10000;
+            uint256 poolBusd = swapEthForTokens(pool);
+            poolAmount += poolBusd;
+            uint256 board = (amount* boardCommision)/10000;
+            payable(boardWallet).transfer(board);
+            uint256 treasuryAmount = (amount* treasuryPercentage)/10000;
+            payable(treasury).transfer( treasuryAmount);
+            uint256 liquidityAmount = (amount* liquidityPercentage)/10000;
+            payable(liquidity).transfer(liquidityAmount); 
+            uint256 marketingAmount = (amount* marketingPercentage)/10000;
+            payable(marketing).transfer( marketingAmount); 
+            uint256 referalTotalAmount = (amount*referalTotal)/10000;
+            uint256 referalAmount = distributeBnb(user, amount);
+            if(referalTotalAmount > referalAmount){
+            payable(topAccount).transfer( referalTotalAmount-referalAmount);  
+            }  
+
+    }      
 
 
     function getStagePrice(uint256 stage) public view returns(uint256 price){
