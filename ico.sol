@@ -17,6 +17,8 @@ interface Referal{
     function getReferrer(address user) external  view returns(address);
 
     function getAllRefrees(address user) external  view returns(address[] memory);
+
+    function isWhitelisted(address user) external view returns(bool);
 }
 
 interface Vesting{
@@ -381,9 +383,9 @@ contract AstorTokenICO is Ownable {
     uint256 public startTime;
     uint256 public amountRaised;
     address public treasury ;
-    address public referalContract = 0x25140D81fc1EDeCB91F246813454627088fa229B;
+    address public referalContract = 0x6e0f4EF9fDa5F3C46415dc9B47e339Ad908450fa;
     // address public vestingContract = 0xC300Ee0Ea14A43977234C75659562A1e52a127f5;
-    address public vestingContract = 0xC426d13Bd2E6eBFB417a63616EB0AAD5fCaE2071;
+    address public vestingContract = 0x219Cb101891096C7BEC53F5F90d3B12757d69363;
     uint256 public tokensSold;
     address public busd = 0x5995b7192867f6F53C17392E67b168459017C820;
     address public wbnb = 0xae13d989daC2f0dEbFf460aC112a837C89BAa7cd;
@@ -403,8 +405,8 @@ contract AstorTokenICO is Ownable {
 
     mapping(address => uint256) public tokenBoughtUser;
     mapping(address => uint256) public usdInvestedByUser;
-    mapping(address => bool) isWhitelisted;
     mapping(address => bool) public phase1Bought;
+    mapping(address => mapping(address => uint256)) public rewardFromUser;
 
 
     uint256 public firstBuyAmount = 5000000000;
@@ -464,9 +466,9 @@ contract AstorTokenICO is Ownable {
         astor = (astorToken);
         startTime = _start;
         treasury = 0x9CfCD3D329549D9A327114F5ABf73637d13eFD07;
-        liquidity = 0x9CfCD3D329549D9A327114F5ABf73637d13eFD07;
-        marketing = 0x9CfCD3D329549D9A327114F5ABf73637d13eFD07;
-        topAccount = 0x9CfCD3D329549D9A327114F5ABf73637d13eFD07;
+        liquidity = 0x7d22e6144931687AF80b38d2C9b7F9F3f7a43291;
+        marketing = 0x1c9F45A5f59Da6A78F414b6c388fec7d6C477B98;
+        topAccount = 0x4A71Ed1366B3C8a8D1C0eE1CEDF74De296944F41;
         levelToCommision[1] = 1000;
         levelToCommision[2] = 700;
         levelToCommision[3] = 500;
@@ -515,11 +517,6 @@ contract AstorTokenICO is Ownable {
         treasury = _treasury;
 
         emit TreasuryUpdated( _treasury);
-    }
-
-    function updateWhitelist(address user, bool _isWhitelisted) external onlyOwner{
-        isWhitelisted[user] = _isWhitelisted;
-        emit WhitelistUpdated(user, _isWhitelisted);
     }
 
     function updateFirstBuy(uint256 amount, uint256 time) external onlyOwner{
@@ -578,7 +575,7 @@ contract AstorTokenICO is Ownable {
         if(stage == 1){
             price = phase1Price;
             if(startTime + firstBuyTime > block.timestamp){
-                require(isWhitelisted[user] ||
+                require(Referal(referalContract).isWhitelisted(user) ||
                 Referal(referalContract).getReferrer(user) != address(0),"Not Eligible, try later");
                 require(phase1Bought[user] == false,"Already Bought Tokens");
                 phase1Bought[user] = true;
@@ -748,6 +745,7 @@ contract AstorTokenICO is Ownable {
             if (Referal(referalContract).getReferrer(_user)!= address(0)) {
                 IERC20(busd).transferFrom(msg.sender, Referal(referalContract).getReferrer(_user), amount*(levelToCommision[i])/10000);
                  referalIncome[Referal(referalContract).getReferrer(_user)] += (getPrice(busd)*amount*(levelToCommision[i])/10000)/10**8;
+                 rewardFromUser[Referal(referalContract).getReferrer(_user)][_user] = (getPrice(busd)*amount*(levelToCommision[i])/10000)/10**8;
                  total += amount*(levelToCommision[i])/10000;
                 _user = Referal(referalContract).getReferrer(_user);
             }
@@ -761,6 +759,7 @@ contract AstorTokenICO is Ownable {
             if (Referal(referalContract).getReferrer(_user)!= address(0)) {
                 payable(Referal(referalContract).getReferrer(_user)).transfer(amount*(levelToCommision[i])/10000);
                 referalIncome[Referal(referalContract).getReferrer(_user)] += (getPrice(wbnb)*amount*(levelToCommision[i])/10000)/10**8;
+                rewardFromUser[Referal(referalContract).getReferrer(_user)][_user] = (getPrice(wbnb)*amount*(levelToCommision[i])/10000)/10**8;
                 total += amount*(levelToCommision[i])/10000;
                 _user = Referal(referalContract).getReferrer(_user);
             }
