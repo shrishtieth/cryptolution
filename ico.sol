@@ -603,14 +603,7 @@ contract AstorTokenICO is Ownable {
            distributeRevenueBusd(amount, user);
         }
         else if(token == wbnb){
-            uint256 pool = (amount*referalPool)/10000;
-            uint256 poolBusd = swapEthForTokens(pool);
-            poolAmount += poolBusd;
-            uint256 board = (amount* boardCommision)/10000;
-            payable(boardWallet).transfer(board); 
-            uint256 referalAmount = distributeBnb(user, amount);
-            payable(treasury).transfer((amount -(referalAmount + board + pool)));    
-            refundIfOver(amount);
+            distributeRevenueBnb(amount, user);
         }
         usdInvestedByUser[user] += usdAmount;
         tokenBoughtUser[user] += tokenAmount;
