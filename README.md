@@ -1,4 +1,4 @@
 # cryptolution
-#ico contract - 0xc25b9392CE4575D230C074c664E5cdFc8F2aECF4
-#referal contract - 0x6e0f4EF9fDa5F3C46415dc9B47e339Ad908450fa
+#ico contract - 0xbEa17F7bff7A9EE03e51b37AF9f12C15114D38c9
+#referal contract - 0xa11eE0b93e72C960D65c8ac082B6b5830eBb3b50
 #referal address dummy - 0x155917F5517a69a2F75026D2b3504b6511889d81
