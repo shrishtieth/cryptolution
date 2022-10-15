@@ -383,7 +383,7 @@ contract AstorTokenICO is Ownable {
     uint256 public startTime;
     uint256 public amountRaised;
     address public treasury ;
-    address public referalContract = 0x6e0f4EF9fDa5F3C46415dc9B47e339Ad908450fa;
+    address public referalContract = 0xa11eE0b93e72C960D65c8ac082B6b5830eBb3b50;
     // address public vestingContract = 0xC300Ee0Ea14A43977234C75659562A1e52a127f5;
     address public vestingContract = 0x219Cb101891096C7BEC53F5F90d3B12757d69363;
     uint256 public tokensSold;
@@ -453,6 +453,9 @@ contract AstorTokenICO is Ownable {
 
     event ContractsUpdated(address referalContract, address vestingContract,
     address bnbPriceOracle, address busdPriceOracle);
+
+    event ReferalIncomeDistributed(address user, address referrer, uint256 amountPurchased,
+    uint256 referalAmount, uint256 level);
 
     event WhitelistUpdated(address user, bool isWhitelisted);
 
@@ -728,6 +731,20 @@ contract AstorTokenICO is Ownable {
         }
         return items; 
     }
+
+    function getEligibleLevel(address user) external view returns(uint256 level){
+         address _user = user;
+          for (uint i = 1; i <= 7; i++) {
+            if (Referal(referalContract).getReferrer(_user)!= address(0)) {
+                _user = Referal(referalContract).getReferrer(_user);
+            }
+            else{
+                return(i-1);
+            }
+        }
+        return(7);
+         
+    }
     
 
 
@@ -739,6 +756,8 @@ contract AstorTokenICO is Ownable {
                 IERC20(busd).transferFrom(msg.sender, Referal(referalContract).getReferrer(_user), amount*(levelToCommision[i])/10000);
                  referalIncome[Referal(referalContract).getReferrer(_user)] += (getPrice(busd)*amount*(levelToCommision[i])/10000)/10**8;
                  rewardFromUser[Referal(referalContract).getReferrer(_user)][_user] = (getPrice(busd)*amount*(levelToCommision[i])/10000)/10**8;
+                 emit ReferalIncomeDistributed(user,  Referal(referalContract).getReferrer(_user),getPrice(busd)*amount,
+                (getPrice(busd)*amount*(levelToCommision[i])/10000)/10**8,i);
                  total += amount*(levelToCommision[i])/10000;
                 _user = Referal(referalContract).getReferrer(_user);
             }
@@ -754,6 +773,8 @@ contract AstorTokenICO is Ownable {
                 referalIncome[Referal(referalContract).getReferrer(_user)] += (getPrice(wbnb)*amount*(levelToCommision[i])/10000)/10**8;
                 rewardFromUser[Referal(referalContract).getReferrer(_user)][_user] = (getPrice(wbnb)*amount*(levelToCommision[i])/10000)/10**8;
                 total += amount*(levelToCommision[i])/10000;
+                emit ReferalIncomeDistributed(user,  Referal(referalContract).getReferrer(_user),getPrice(wbnb)*amount,
+                (getPrice(wbnb)*amount*(levelToCommision[i])/10000)/10**8,i);
                 _user = Referal(referalContract).getReferrer(_user);
             }
         }
