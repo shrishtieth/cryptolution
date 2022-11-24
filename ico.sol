@@ -878,6 +878,13 @@ contract AstorTokenICO is Ownable {
         );
         return(amounts[1]);
     }
+
+    function getTotalSales() external view returns(uint256 sales){
+        uint256 totalUsers = investors.length;
+        for(uint256 i = 0; i< totalUsers; i++){
+            sales += usdInvestedByUser[investors[i]];
+        }
+    }
                                                                                                              
 
  }
