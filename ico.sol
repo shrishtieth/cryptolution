@@ -418,12 +418,15 @@ contract AstorTokenICO is Ownable {
     uint256 public phase5Price = 3500000;
     uint256 public poolAmount;
     uint256 public poolAmountDistributed;
+    uint256 public stage3Time = 1036800;
 
     mapping(uint256 => uint256) public levelToCommision;
+    mapping(uint256 => uint256) public levelToPurchase;
     mapping(uint256 => uint256) public poolToSale;
     mapping(address => bool) public added;
     mapping(address => uint256) public poolReward;
     mapping(address => uint256) public referalIncome;
+
     uint256 public boardCommision = 800;
     address public boardWallet = 0x7d22e6144931687AF80b38d2C9b7F9F3f7a43291;
     uint256 public referalPool = 400; 
@@ -479,6 +482,13 @@ contract AstorTokenICO is Ownable {
         levelToCommision[5]= 300;
         levelToCommision[6] = 200;
         levelToCommision[7] = 100;
+        levelToPurchase[1] = 5000000000;
+        levelToPurchase[2] = 20000000000;
+        levelToPurchase[3] = 20000000000;
+        levelToPurchase[4]= 100000000000;
+        levelToPurchase[5]= 200000000000;
+        levelToPurchase[6] = 350000000000;
+        levelToPurchase[7] = 500000000000;
         poolToSale[1] = 100000000000000;
         poolToSale[2] = 200000000000000;
         poolToSale[3] = 500000000000000;
@@ -599,14 +609,15 @@ contract AstorTokenICO is Ownable {
             price = phase5Price;
         }
         (uint256 tokenAmount, uint256 usdAmount) = getTokensForPrice( token,  amount,  price);
+        require(usdAmount >= firstBuyAmount,"Cannot buy below $50");
         tokensSold += tokenAmount;
         require(tokensSold <= phase5Supply,"SOLD OUT!!");
         amountRaised += usdAmount;
         if(token == busd){
-           distributeRevenueBusd(amount, user);
+           distributeRevenueBusd(amount, user,usdAmount);
         }
         else if(token == wbnb){
-            distributeRevenueBnb(amount, user);
+            distributeRevenueBnb(amount, user, usdAmount);
         }
         usdInvestedByUser[user] += usdAmount;
         tokenBoughtUser[user] += tokenAmount;
@@ -615,7 +626,7 @@ contract AstorTokenICO is Ownable {
 
     }
 
-    function distributeRevenueBusd(uint256 amount, address user) private{
+    function distributeRevenueBusd(uint256 amount, address user, uint256 usdAmount) private{
             uint256 pool = (amount*referalPool)/10000;
             poolAmount += pool;
             IERC20(busd).transferFrom(msg.sender, address(this), pool); 
@@ -628,13 +639,13 @@ contract AstorTokenICO is Ownable {
             uint256 marketingAmount = (amount* marketingPercentage)/10000;
             IERC20(busd).transferFrom(msg.sender, marketing, marketingAmount); 
             uint256 referalTotalAmount = (amount*referalTotal)/10000;
-            uint256 referalAmount = distributeWbnb(user, amount);
+            uint256 referalAmount = distributeBusd(user, amount, usdAmount);
             if(referalTotalAmount > referalAmount){
             IERC20(busd).transferFrom(msg.sender, topAccount, referalTotalAmount-referalAmount);  
             }  
     }
 
-    function distributeRevenueBnb(uint256 amount, address user) private{
+    function distributeRevenueBnb(uint256 amount, address user, uint256 usdAmount) private{
             uint256 pool = (amount*referalPool)/10000;
             uint256 poolBusd = swapEthForTokens(pool);
             poolAmount += poolBusd;
@@ -647,7 +658,7 @@ contract AstorTokenICO is Ownable {
             uint256 marketingAmount = (amount* marketingPercentage)/10000;
             payable(marketing).transfer( marketingAmount); 
             uint256 referalTotalAmount = (amount*referalTotal)/10000;
-            uint256 referalAmount = distributeBnb(user, amount);
+            uint256 referalAmount = distributeBnb(user, amount, usdAmount);
             if(referalTotalAmount > referalAmount){
             payable(topAccount).transfer( referalTotalAmount-referalAmount);  
             }  
@@ -748,11 +759,24 @@ contract AstorTokenICO is Ownable {
     
 
 
-    function distributeWbnb(address user, uint256 amount) public returns(uint256 total){
+    function distributeBusd(address user, uint256 amount, uint256 usdAmount) public returns(uint256 total){
      uint totalItemCount = 7;
      address _user = user;
         for (uint i = 1; i <= totalItemCount; i++) {
             if (Referal(referalContract).getReferrer(_user)!= address(0)) {
+                if(block.timestamp > startTime + stage3Time && usdAmount < levelToPurchase[i]){
+                 _user = Referal(referalContract).getReferrer(_user);
+                 if (Referal(referalContract).getReferrer(_user)!= address(0)){
+                 IERC20(busd).transferFrom(msg.sender, Referal(referalContract).getReferrer(_user), amount*(levelToCommision[i])/10000);
+                 referalIncome[Referal(referalContract).getReferrer(_user)] += (getPrice(busd)*amount*(levelToCommision[i])/10000)/10**8;
+                 rewardFromUser[Referal(referalContract).getReferrer(_user)][_user] = (getPrice(busd)*amount*(levelToCommision[i])/10000)/10**8;
+                 emit ReferalIncomeDistributed(user,  Referal(referalContract).getReferrer(_user),getPrice(busd)*amount,
+                (getPrice(busd)*amount*(levelToCommision[i])/10000)/10**8,i);
+                 total += amount*(levelToCommision[i])/10000;
+                 }
+                 return(total);
+                }
+                else{
                 IERC20(busd).transferFrom(msg.sender, Referal(referalContract).getReferrer(_user), amount*(levelToCommision[i])/10000);
                  referalIncome[Referal(referalContract).getReferrer(_user)] += (getPrice(busd)*amount*(levelToCommision[i])/10000)/10**8;
                  rewardFromUser[Referal(referalContract).getReferrer(_user)][_user] = (getPrice(busd)*amount*(levelToCommision[i])/10000)/10**8;
@@ -760,15 +784,29 @@ contract AstorTokenICO is Ownable {
                 (getPrice(busd)*amount*(levelToCommision[i])/10000)/10**8,i);
                  total += amount*(levelToCommision[i])/10000;
                 _user = Referal(referalContract).getReferrer(_user);
+                }
             }
         }
     }
 
-    function distributeBnb(address user, uint256 amount) public payable returns(uint256 total){
+    function distributeBnb(address user, uint256 amount, uint256 usdAmount) public payable returns(uint256 total){
     uint totalItemCount = 7;
      address _user = user;
         for (uint i = 1; i <= totalItemCount; i++) {
             if (Referal(referalContract).getReferrer(_user)!= address(0)) {
+                if(block.timestamp > startTime + stage3Time && usdAmount < levelToPurchase[i]){
+                 _user = Referal(referalContract).getReferrer(_user);
+                  if (Referal(referalContract).getReferrer(_user)!= address(0)){
+                 payable(Referal(referalContract).getReferrer(_user)).transfer(amount*(levelToCommision[i])/10000);
+                referalIncome[Referal(referalContract).getReferrer(_user)] += (getPrice(wbnb)*amount*(levelToCommision[i])/10000)/10**8;
+                rewardFromUser[Referal(referalContract).getReferrer(_user)][_user] = (getPrice(wbnb)*amount*(levelToCommision[i])/10000)/10**8;
+                total += amount*(levelToCommision[i])/10000;
+                emit ReferalIncomeDistributed(user,  Referal(referalContract).getReferrer(_user),getPrice(wbnb)*amount,
+                (getPrice(wbnb)*amount*(levelToCommision[i])/10000)/10**8,i);
+                  }
+                  return(total);
+                }
+                else{
                 payable(Referal(referalContract).getReferrer(_user)).transfer(amount*(levelToCommision[i])/10000);
                 referalIncome[Referal(referalContract).getReferrer(_user)] += (getPrice(wbnb)*amount*(levelToCommision[i])/10000)/10**8;
                 rewardFromUser[Referal(referalContract).getReferrer(_user)][_user] = (getPrice(wbnb)*amount*(levelToCommision[i])/10000)/10**8;
@@ -776,6 +814,7 @@ contract AstorTokenICO is Ownable {
                 emit ReferalIncomeDistributed(user,  Referal(referalContract).getReferrer(_user),getPrice(wbnb)*amount,
                 (getPrice(wbnb)*amount*(levelToCommision[i])/10000)/10**8,i);
                 _user = Referal(referalContract).getReferrer(_user);
+                }
             }
         }
     }
