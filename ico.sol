@@ -503,6 +503,19 @@ contract AstorTokenICO is Ownable {
 
 	}
 
+	function updateAstorTokenAddress(address token) external onlyOwner{
+		astor = token;
+	}
+
+	function updateWallet(address _treasury, address _topAccount,
+	address _marketing, address _liquidity, address _board) external onlyOwner{
+		treasury = _treasury;
+		topAccount = _topAccount;
+		marketing = _marketing;
+		liquidity = _liquidity;
+		boardWallet = _board;
+	}
+
 	function updateSupply(uint256 _phase1Supply, uint256 _phase2Supply,
 		uint256 _phase3Supply, uint256 _phase4Supply, uint256 _phase5Supply) external onlyOwner {
 		phase1Supply = _phase1Supply;
@@ -528,11 +541,7 @@ contract AstorTokenICO is Ownable {
 			_phase3Price, _phase4Price, _phase5Price);
 	}
 
-	function updateTreasury(address _treasury) external onlyOwner {
-		treasury = _treasury;
 
-		emit TreasuryUpdated(_treasury);
-	}
 
 	function updateFirstBuy(uint256 amount, uint256 time) external onlyOwner {
 		firstBuyAmount = amount;
@@ -540,6 +549,16 @@ contract AstorTokenICO is Ownable {
 
 		emit FirstBuyUpdated(amount, time);
 	}
+
+
+	function updateLevelToCommision(uint256 level, uint256 commision) external onlyOwner{
+		levelToCommision[level] = commision;
+	}
+
+	function updateLevelToPurchase(uint256 level, uint256 Purchase) external onlyOwner{
+		levelToPurchase[level] = Purchase;
+	}
+ 
 
 	function updateContracts(address _referalContract, address _vestingContract,
 		address _bnbPriceOracle, address _busdPriceOracle) external onlyOwner {
